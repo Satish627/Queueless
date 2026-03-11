@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenShell } from '@/components/screen-shell';
@@ -6,7 +6,11 @@ import { formatMinutes } from '@/lib/utils';
 import { demoActions, useDemoStore } from '@/store';
 
 export function ActiveQueueScreen() {
+  const router = useRouter();
   const activeSession = useDemoStore((snapshot) => snapshot.activeSession);
+  const isMutatingQueue = useDemoStore((snapshot) => snapshot.isMutatingQueue);
+  const isSyncingActive = useDemoStore((snapshot) => snapshot.isSyncingActive);
+  const lastError = useDemoStore((snapshot) => snapshot.lastError);
 
   if (!activeSession) {
     return (
@@ -24,39 +28,55 @@ export function ActiveQueueScreen() {
     );
   }
 
-  const isNext = activeSession.entry.position <= 1;
+  const isNext = activeSession.position <= 1;
+
+  const handleLeaveQueue = async () => {
+    const left = await demoActions.leaveQueue();
+    if (left) {
+      router.replace('/(customer)/home');
+    }
+  };
 
   return (
     <ScreenShell>
       <View style={styles.container}>
         <Text style={styles.title}>Your active queue</Text>
         <Text style={styles.subtitle}>
-          {activeSession.business.name} · {activeSession.queue.name}
+          {activeSession.businessName} · {activeSession.queueName}
         </Text>
 
         <View style={styles.statsCard}>
-          <Text style={styles.statsValue}>#{activeSession.entry.position}</Text>
+          <Text style={styles.statsValue}>#{activeSession.position}</Text>
           <Text style={styles.statsLabel}>Current position</Text>
           <Text style={styles.statsMeta}>
             Estimated wait: {formatMinutes(activeSession.estimatedWaitMinutes)}
           </Text>
           <Text style={styles.statsMeta}>
-            Status: {isNext ? 'You are next' : 'Waiting in queue'}
+            Status: {isNext ? 'You are next' : activeSession.status}
           </Text>
         </View>
 
+        {lastError ? <Text style={styles.errorText}>{lastError}</Text> : null}
+
         <View style={styles.buttonGroup}>
-          <Pressable onPress={demoActions.stepQueueForward} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Refresh queue position</Text>
-          </Pressable>
           <Pressable
-            onPress={() => demoActions.completeActiveQueue('served')}
-            style={styles.primaryButton}
+            disabled={isSyncingActive}
+            onPress={() => void demoActions.refreshActiveSession()}
+            style={[styles.secondaryButton, isSyncingActive ? styles.buttonDisabled : null]}
           >
-            <Text style={styles.primaryButtonText}>Mark served (demo)</Text>
+            <Text style={styles.secondaryButtonText}>
+              {isSyncingActive ? 'Refreshing...' : 'Refresh queue position'}
+            </Text>
           </Pressable>
-          <Pressable onPress={demoActions.leaveQueue} style={styles.dangerButton}>
-            <Text style={styles.dangerButtonText}>Leave queue</Text>
+
+          <Pressable
+            disabled={isMutatingQueue}
+            onPress={() => void handleLeaveQueue()}
+            style={[styles.dangerButton, isMutatingQueue ? styles.buttonDisabled : null]}
+          >
+            <Text style={styles.dangerButtonText}>
+              {isMutatingQueue ? 'Leaving...' : 'Leave queue'}
+            </Text>
           </Pressable>
         </View>
 
@@ -106,18 +126,14 @@ const styles = StyleSheet.create({
   statsMeta: {
     color: '#1e40af',
   },
+  errorText: {
+    color: '#b91c1c',
+  },
   buttonGroup: {
     gap: 8,
   },
-  primaryButton: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontWeight: '600',
+  buttonDisabled: {
+    opacity: 0.5,
   },
   secondaryButton: {
     borderWidth: 1,

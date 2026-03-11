@@ -1,5 +1,5 @@
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ScreenShell } from '@/components/screen-shell';
@@ -15,8 +15,13 @@ export function BusinessDetailsScreen() {
   const queues = useDemoStore((snapshot) => snapshot.queues);
   const queueLoads = useDemoStore((snapshot) => snapshot.queueLoads);
   const activeSession = useDemoStore((snapshot) => snapshot.activeSession);
+  const isMutatingQueue = useDemoStore((snapshot) => snapshot.isMutatingQueue);
   const [displayName, setDisplayName] = useState(profile.fullName);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void demoActions.bootstrap();
+  }, []);
 
   const business = useMemo(
     () => businesses.find((item) => item.id === businessId),
@@ -32,9 +37,7 @@ export function BusinessDetailsScreen() {
       <ScreenShell>
         <View style={styles.container}>
           <Text style={styles.title}>Business not found</Text>
-          <Text style={styles.subtitle}>
-            This business route does not match an existing item in the demo dataset.
-          </Text>
+          <Text style={styles.subtitle}>This business is unavailable or still loading.</Text>
           <Link href="/(customer)/home" style={styles.link}>
             Back to businesses
           </Link>
@@ -46,7 +49,7 @@ export function BusinessDetailsScreen() {
   const queueLoad = queueLoads[queue.id] ?? 0;
   const estimatedWait = queueLoad * queue.avg_service_minutes;
 
-  const handleJoinQueue = () => {
+  const handleJoinQueue = async () => {
     setError(null);
     const trimmedName = displayName.trim();
 
@@ -55,7 +58,7 @@ export function BusinessDetailsScreen() {
       return;
     }
 
-    const result = demoActions.joinQueue({
+    const result = await demoActions.joinQueue({
       businessId,
       displayName: trimmedName,
     });
@@ -85,7 +88,7 @@ export function BusinessDetailsScreen() {
           <Text style={styles.metaText}>Estimated wait: {formatMinutes(estimatedWait)}</Text>
         </View>
 
-        {activeSession?.business.id === business.id ? (
+        {activeSession?.businessId === business.id ? (
           <View style={styles.queueCard}>
             <Text style={styles.queueTitle}>You already joined this queue.</Text>
             <Link href="/(customer)/queue/active" style={styles.link}>
@@ -106,12 +109,19 @@ export function BusinessDetailsScreen() {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <Pressable
-              disabled={queue.status !== 'open'}
-              onPress={handleJoinQueue}
-              style={[styles.button, queue.status !== 'open' ? styles.buttonDisabled : null]}
+              disabled={queue.status !== 'open' || isMutatingQueue}
+              onPress={() => void handleJoinQueue()}
+              style={[
+                styles.button,
+                queue.status !== 'open' || isMutatingQueue ? styles.buttonDisabled : null,
+              ]}
             >
               <Text style={styles.buttonText}>
-                {queue.status === 'open' ? 'Join queue' : 'Queue is closed'}
+                {queue.status === 'open'
+                  ? isMutatingQueue
+                    ? 'Joining...'
+                    : 'Join queue'
+                  : 'Queue is closed'}
               </Text>
             </Pressable>
           </View>

@@ -1,18 +1,44 @@
+'use client';
+
 import Link from 'next/link';
 
 import { PageShell } from '@/components/page-shell';
+import { usePublicBusiness } from '@/hooks/use-public-business';
 
 export function DashboardHomePage() {
+  const { selectedBusiness, isLoading, error } = usePublicBusiness();
+
   const metrics = [
-    { label: 'Queue status', value: 'Open' },
-    { label: 'Waiting', value: '6' },
-    { label: 'Called', value: '1' },
-    { label: 'Avg service', value: '15 min' },
+    { label: 'Queue status', value: selectedBusiness?.queue_status?.toUpperCase() ?? '-' },
+    { label: 'Waiting', value: String(selectedBusiness?.waiting_count ?? 0) },
+    { label: 'Queue name', value: selectedBusiness?.queue_name ?? '-' },
+    {
+      label: 'Avg service',
+      value: selectedBusiness?.avg_service_minutes
+        ? `${selectedBusiness.avg_service_minutes} min`
+        : '-',
+    },
   ];
 
   return (
     <PageShell title="Dashboard" description="Live queue overview and quick actions for staff.">
       <div className="space-y-6 text-sm text-slate-700">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          {isLoading ? (
+            <p>Loading business data...</p>
+          ) : selectedBusiness ? (
+            <>
+              <p className="font-semibold text-slate-900">{selectedBusiness.name}</p>
+              <p>
+                {selectedBusiness.category} · {selectedBusiness.city}
+              </p>
+            </>
+          ) : (
+            <p>No active business found in Supabase yet.</p>
+          )}
+          {error ? <p className="mt-2 text-rose-700">{error}</p> : null}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map((metric) => (
             <article
@@ -47,15 +73,6 @@ export function DashboardHomePage() {
               Staff management
             </Link>
           </div>
-        </div>
-
-        <div className="rounded-lg border border-slate-200 p-4">
-          <p className="font-medium text-slate-900">MVP focus</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Operate one active queue in real time.</li>
-            <li>Add walk-ins and process customers quickly.</li>
-            <li>Keep queue settings simple and easy to control.</li>
-          </ul>
         </div>
       </div>
     </PageShell>

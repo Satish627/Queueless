@@ -1,122 +1,154 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import {
+  addWalkInEntry,
+  callNextEntryForQueue,
+  listQueueEntriesForQueue,
+  setQueueEntryStatus,
+  updateQueueSettings,
+  type DashboardQueueEntrySnapshot,
+} from '@queueless/api';
+import type { QueueEntryStatus, QueueStatus } from '@queueless/types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { PageShell } from '@/components/page-shell';
-
-type QueueEntryStatus = 'waiting' | 'called' | 'served' | 'cancelled' | 'no_show';
-
-interface QueueRow {
-  id: string;
-  displayName: string;
-  source: 'app' | 'walk_in';
-  status: QueueEntryStatus;
-  joinedAt: string;
-  position: number;
-}
-
-const seedRows: QueueRow[] = [
-  {
-    id: 'entry-1',
-    displayName: 'Alex',
-    source: 'app',
-    status: 'waiting',
-    joinedAt: new Date(Date.now() - 1000 * 60 * 28).toISOString(),
-    position: 1,
-  },
-  {
-    id: 'entry-2',
-    displayName: 'Mia',
-    source: 'walk_in',
-    status: 'waiting',
-    joinedAt: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-    position: 2,
-  },
-  {
-    id: 'entry-3',
-    displayName: 'Noah',
-    source: 'app',
-    status: 'called',
-    joinedAt: new Date(Date.now() - 1000 * 60 * 11).toISOString(),
-    position: 3,
-  },
-];
-
-const recomputePositions = (rows: QueueRow[]): QueueRow[] => {
-  let nextPosition = 1;
-  return rows.map((row) => {
-    if (row.status === 'waiting' || row.status === 'called') {
-      const updated = { ...row, position: nextPosition };
-      nextPosition += 1;
-      return updated;
-    }
-    return { ...row, position: 0 };
-  });
-};
+import { usePublicBusiness } from '@/hooks/use-public-business';
+import { supabaseBrowserClient } from '@/lib/supabase-browser';
 
 export function QueueManagementPage() {
-  const [rows, setRows] = useState<QueueRow[]>(seedRows);
+  const {
+    businesses,
+    selectedBusiness,
+    selectedBusinessId,
+    setSelectedBusinessId,
+    isLoading,
+    error: businessError,
+    refresh,
+  } = usePublicBusiness();
+
+  const [rows, setRows] = useState<DashboardQueueEntrySnapshot[]>([]);
   const [walkInName, setWalkInName] = useState('');
-  const [queueStatus, setQueueStatus] = useState<'open' | 'closed'>('open');
+  const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const activeRows = useMemo(
-    () => rows.filter((row) => row.status === 'waiting' || row.status === 'called'),
-    [rows],
-  );
+  const queueId = selectedBusiness?.queue_id ?? null;
 
-  const callNext = () => {
-    setRows((previous) => {
-      const firstWaiting = previous.find((row) => row.status === 'waiting');
-      if (!firstWaiting) {
-        return previous;
-      }
-      return previous.map((row) =>
-        row.id === firstWaiting.id
-          ? {
-              ...row,
-              status: 'called',
-            }
-          : row,
-      );
-    });
-  };
-
-  const addWalkIn = () => {
-    const normalized = walkInName.trim();
-    if (!normalized || queueStatus !== 'open') {
+  const loadRows = useCallback(async () => {
+    if (!queueId) {
+      setRows([]);
       return;
     }
 
-    setRows((previous) => {
-      const nextRow: QueueRow = {
-        id: `entry-${Date.now()}`,
-        displayName: normalized,
-        source: 'walk_in',
-        status: 'waiting',
-        joinedAt: new Date().toISOString(),
-        position: 999,
-      };
-      return recomputePositions([...previous, nextRow]);
-    });
-    setWalkInName('');
-  };
+    try {
+      const entries = await listQueueEntriesForQueue(supabaseBrowserClient, queueId);
+      setRows(entries);
+    } catch (loadError) {
+      if (loadError instanceof Error) {
+        setError(loadError.message);
+      } else {
+        setError('Unable to load queue entries.');
+      }
+    }
+  }, [queueId]);
 
-  const markStatus = (id: string, status: Exclude<QueueEntryStatus, 'waiting' | 'called'>) => {
-    setRows((previous) => {
-      const updated = previous.map((row) =>
-        row.id === id
-          ? {
-              ...row,
-              status,
-            }
-          : row,
+  useEffect(() => {
+    void loadRows();
+  }, [loadRows]);
+
+  const callNext = async () => {
+    if (!queueId) {
+      return;
+    }
+
+    setError(null);
+    setIsBusy(true);
+    try {
+      await callNextEntryForQueue(supabaseBrowserClient, queueId);
+      await loadRows();
+      await refresh();
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error ? actionError.message : 'Unable to call next customer.',
       );
-      return recomputePositions(updated);
-    });
+    } finally {
+      setIsBusy(false);
+    }
   };
 
-  const waitingCount = activeRows.filter((row) => row.status === 'waiting').length;
-  const calledCount = activeRows.filter((row) => row.status === 'called').length;
+  const addWalkIn = async () => {
+    if (!queueId || !walkInName.trim()) {
+      return;
+    }
+
+    setError(null);
+    setIsBusy(true);
+    try {
+      await addWalkInEntry(supabaseBrowserClient, {
+        queueId,
+        displayName: walkInName.trim(),
+      });
+      setWalkInName('');
+      await loadRows();
+      await refresh();
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error ? actionError.message : 'Unable to add walk-in customer.',
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const markStatus = async (
+    entryId: string,
+    status: Extract<QueueEntryStatus, 'served' | 'cancelled' | 'no_show'>,
+  ) => {
+    setError(null);
+    setIsBusy(true);
+    try {
+      await setQueueEntryStatus(supabaseBrowserClient, {
+        entryId,
+        status,
+      });
+      await loadRows();
+      await refresh();
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error ? actionError.message : 'Unable to update entry status.',
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const toggleQueueStatus = async () => {
+    if (!selectedBusiness?.queue_id || !selectedBusiness.queue_status) {
+      return;
+    }
+
+    const nextStatus: QueueStatus = selectedBusiness.queue_status === 'open' ? 'closed' : 'open';
+
+    setError(null);
+    setIsBusy(true);
+    try {
+      await updateQueueSettings(supabaseBrowserClient, {
+        queueId: selectedBusiness.queue_id,
+        status: nextStatus,
+        avgServiceMinutes: selectedBusiness.avg_service_minutes ?? 15,
+      });
+      await refresh();
+      await loadRows();
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error ? actionError.message : 'Unable to update queue settings.',
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const waitingCount = useMemo(() => rows.filter((row) => row.status === 'waiting').length, [rows]);
+  const calledCount = useMemo(() => rows.filter((row) => row.status === 'called').length, [rows]);
 
   return (
     <PageShell
@@ -124,21 +156,58 @@ export function QueueManagementPage() {
       description="Monitor waiting customers and process queue actions."
     >
       <div className="space-y-5 text-sm text-slate-700">
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="grid gap-1">
+            <span className="font-medium text-slate-900">Business</span>
+            <select
+              className="rounded-md border border-slate-300 px-3 py-2"
+              onChange={(event) => setSelectedBusinessId(event.target.value)}
+              value={selectedBusinessId}
+            >
+              {businesses.map((business) => (
+                <option key={business.business_id} value={business.business_id}>
+                  {business.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            {isLoading ? (
+              <p>Loading business...</p>
+            ) : (
+              <>
+                <p className="font-semibold text-slate-900">
+                  {selectedBusiness?.name ?? 'No business selected'}
+                </p>
+                <p>{selectedBusiness?.queue_name ?? 'No queue configured'}</p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {businessError ? <p className="text-rose-700">{businessError}</p> : null}
+        {error ? <p className="text-rose-700">{error}</p> : null}
+
         <div className="flex flex-wrap items-center gap-3">
-          <span className="rounded-full bg-slate-100 px-3 py-1">Status: {queueStatus}</span>
+          <span className="rounded-full bg-slate-100 px-3 py-1">
+            Status: {selectedBusiness?.queue_status ?? '-'}
+          </span>
           <span className="rounded-full bg-slate-100 px-3 py-1">Waiting: {waitingCount}</span>
           <span className="rounded-full bg-slate-100 px-3 py-1">Called: {calledCount}</span>
           <button
-            className="rounded-md border border-slate-300 px-3 py-1 font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => setQueueStatus((previous) => (previous === 'open' ? 'closed' : 'open'))}
+            className="rounded-md border border-slate-300 px-3 py-1 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            disabled={!selectedBusiness?.queue_id || isBusy}
+            onClick={() => void toggleQueueStatus()}
             type="button"
           >
-            {queueStatus === 'open' ? 'Close queue' : 'Open queue'}
+            {selectedBusiness?.queue_status === 'open' ? 'Close queue' : 'Open queue'}
           </button>
           <button
-            className="rounded-md bg-brand-700 px-3 py-1 font-medium text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={queueStatus !== 'open'}
-            onClick={callNext}
+            className="rounded-md bg-brand-700 px-3 py-1 font-medium text-white hover:bg-brand-500 disabled:opacity-50"
+            disabled={
+              !selectedBusiness?.queue_id || selectedBusiness.queue_status !== 'open' || isBusy
+            }
+            onClick={() => void callNext()}
             type="button"
           >
             Call next
@@ -153,9 +222,14 @@ export function QueueManagementPage() {
             value={walkInName}
           />
           <button
-            className="rounded-md bg-slate-900 px-3 py-2 font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={queueStatus !== 'open' || !walkInName.trim()}
-            onClick={addWalkIn}
+            className="rounded-md bg-slate-900 px-3 py-2 font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            disabled={
+              !selectedBusiness?.queue_id ||
+              selectedBusiness.queue_status !== 'open' ||
+              !walkInName.trim() ||
+              isBusy
+            }
+            onClick={() => void addWalkIn()}
             type="button"
           >
             Add walk-in
@@ -175,39 +249,42 @@ export function QueueManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {activeRows.length === 0 ? (
+              {rows.length === 0 ? (
                 <tr>
                   <td className="px-3 py-4 text-slate-500" colSpan={6}>
                     No active queue entries.
                   </td>
                 </tr>
               ) : (
-                activeRows.map((row) => (
-                  <tr className="border-t border-slate-200" key={row.id}>
+                rows.map((row) => (
+                  <tr className="border-t border-slate-200" key={row.entry_id}>
                     <td className="px-3 py-2 font-medium text-slate-900">#{row.position}</td>
-                    <td className="px-3 py-2">{row.displayName}</td>
+                    <td className="px-3 py-2">{row.display_name}</td>
                     <td className="px-3 py-2">{row.source === 'walk_in' ? 'Walk-in' : 'App'}</td>
                     <td className="px-3 py-2">{row.status}</td>
-                    <td className="px-3 py-2">{new Date(row.joinedAt).toLocaleTimeString()}</td>
+                    <td className="px-3 py-2">{new Date(row.joined_at).toLocaleTimeString()}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
                         <button
-                          className="rounded border border-emerald-300 px-2 py-1 text-emerald-700 hover:bg-emerald-50"
-                          onClick={() => markStatus(row.id, 'served')}
+                          className="rounded border border-emerald-300 px-2 py-1 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                          disabled={isBusy}
+                          onClick={() => void markStatus(row.entry_id, 'served')}
                           type="button"
                         >
                           Served
                         </button>
                         <button
-                          className="rounded border border-amber-300 px-2 py-1 text-amber-700 hover:bg-amber-50"
-                          onClick={() => markStatus(row.id, 'no_show')}
+                          className="rounded border border-amber-300 px-2 py-1 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                          disabled={isBusy}
+                          onClick={() => void markStatus(row.entry_id, 'no_show')}
                           type="button"
                         >
                           No-show
                         </button>
                         <button
-                          className="rounded border border-rose-300 px-2 py-1 text-rose-700 hover:bg-rose-50"
-                          onClick={() => markStatus(row.id, 'cancelled')}
+                          className="rounded border border-rose-300 px-2 py-1 text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                          disabled={isBusy}
+                          onClick={() => void markStatus(row.entry_id, 'cancelled')}
                           type="button"
                         >
                           Remove

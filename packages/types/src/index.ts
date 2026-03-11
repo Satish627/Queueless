@@ -59,6 +59,7 @@ export interface QueueEntry extends Record<string, unknown> {
   id: string;
   queue_id: string;
   customer_id: string | null;
+  guest_token: string;
   display_name: string;
   source: QueueEntrySource;
   status: QueueEntryStatus;
@@ -106,7 +107,11 @@ export interface Database {
       };
       queue_entries: {
         Row: QueueEntry;
-        Insert: Omit<QueueEntry, 'id' | 'joined_at'> & { id?: string; joined_at?: string };
+        Insert: Omit<QueueEntry, 'id' | 'joined_at' | 'guest_token'> & {
+          id?: string;
+          joined_at?: string;
+          guest_token?: string;
+        };
         Update: Partial<
           Omit<QueueEntry, 'id' | 'queue_id' | 'customer_id' | 'source' | 'joined_at'>
         >;

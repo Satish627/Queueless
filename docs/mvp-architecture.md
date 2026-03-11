@@ -16,6 +16,12 @@
 - Use shared API package for DB access to avoid duplicate query logic across apps.
 - Keep MVP scope to auth, business listing/details, queue flow, and queue operations.
 
+## Guest preview mode
+
+- Auth is temporarily bypassed for easier MVP walkthrough.
+- Queue customer/staff actions are wired to Supabase through security-definer RPC functions.
+- This keeps interactions database-backed while full auth/RLS flows are implemented next.
+
 ## Next implementation phases
 
 1. Implement auth state and guarded routes in both apps.

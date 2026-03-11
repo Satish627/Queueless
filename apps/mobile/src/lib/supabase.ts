@@ -1,8 +1,10 @@
 import { createQueueLessClient } from '@queueless/api';
 
-import { env } from './env';
+import { env, hasSupabaseEnv } from './env';
 
-export const supabase = createQueueLessClient({
-  supabaseUrl: env.supabaseUrl,
-  supabaseAnonKey: env.supabaseAnonKey,
-});
+export const supabase = hasSupabaseEnv
+  ? createQueueLessClient({
+      supabaseUrl: env.supabaseUrl as string,
+      supabaseAnonKey: env.supabaseAnonKey as string,
+    })
+  : null;

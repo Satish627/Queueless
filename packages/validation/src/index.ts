@@ -62,6 +62,7 @@ export const queueEntrySchema = z.object({
   id: z.string().uuid(),
   queue_id: z.string().uuid(),
   customer_id: z.string().uuid().nullable(),
+  guest_token: z.string().uuid(),
   display_name: z.string().trim().min(1).max(120),
   source: z.enum(QUEUE_ENTRY_SOURCES),
   status: z.enum(QUEUE_ENTRY_STATUSES),

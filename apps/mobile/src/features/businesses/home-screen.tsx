@@ -1,10 +1,10 @@
 import { Link, type Href } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ScreenShell } from '@/components/screen-shell';
 import { formatMinutes } from '@/lib/utils';
-import { useDemoStore } from '@/store';
+import { demoActions, useDemoStore } from '@/store';
 
 export function HomeScreen() {
   const [query, setQuery] = useState('');
@@ -12,6 +12,12 @@ export function HomeScreen() {
   const queues = useDemoStore((snapshot) => snapshot.queues);
   const queueLoads = useDemoStore((snapshot) => snapshot.queueLoads);
   const activeSession = useDemoStore((snapshot) => snapshot.activeSession);
+  const isLoadingBusinesses = useDemoStore((snapshot) => snapshot.isLoadingBusinesses);
+  const lastError = useDemoStore((snapshot) => snapshot.lastError);
+
+  useEffect(() => {
+    void demoActions.bootstrap();
+  }, []);
 
   const filteredBusinesses = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -48,11 +54,9 @@ export function HomeScreen() {
 
         {activeSession ? (
           <View style={styles.activeBanner}>
-            <Text style={styles.activeBannerTitle}>
-              Active queue: {activeSession.business.name}
-            </Text>
+            <Text style={styles.activeBannerTitle}>Active queue: {activeSession.businessName}</Text>
             <Text style={styles.activeBannerText}>
-              Position #{activeSession.entry.position}, ETA{' '}
+              Position #{activeSession.position}, ETA{' '}
               {formatMinutes(activeSession.estimatedWaitMinutes)}
             </Text>
             <Link href="/(customer)/queue/active" style={styles.inlineLink}>
@@ -61,38 +65,46 @@ export function HomeScreen() {
           </View>
         ) : null}
 
-        <View style={styles.businessList}>
-          {filteredBusinesses.map((business) => {
-            const queue = queues.find((item) => item.business_id === business.id);
-            const queueLoad = queue ? (queueLoads[queue.id] ?? 0) : 0;
-            const estimatedWait = queue ? queueLoad * queue.avg_service_minutes : 0;
+        {lastError ? <Text style={styles.errorText}>{lastError}</Text> : null}
 
-            return (
-              <View key={business.id} style={styles.businessCard}>
-                <Text style={styles.businessName}>{business.name}</Text>
-                <Text style={styles.businessMeta}>
-                  {business.category} · {business.city}
-                </Text>
-                <Text style={styles.businessMeta}>
-                  Queue: {queue?.status === 'open' ? 'Open' : 'Closed'}
-                </Text>
-                <Text style={styles.businessMeta}>
-                  Estimated wait: {formatMinutes(estimatedWait)}
-                </Text>
-                <Link
-                  href={
-                    {
-                      pathname: '/(customer)/businesses/[id]',
-                      params: { id: business.id },
-                    } as Href
-                  }
-                  style={styles.inlineLink}
-                >
-                  View details
-                </Link>
-              </View>
-            );
-          })}
+        <View style={styles.businessList}>
+          {isLoadingBusinesses ? (
+            <Text style={styles.loadingText}>Loading businesses...</Text>
+          ) : filteredBusinesses.length === 0 ? (
+            <Text style={styles.loadingText}>No matching businesses found.</Text>
+          ) : (
+            filteredBusinesses.map((business) => {
+              const queue = queues.find((item) => item.business_id === business.id);
+              const queueLoad = queue ? (queueLoads[queue.id] ?? 0) : 0;
+              const estimatedWait = queue ? queueLoad * queue.avg_service_minutes : 0;
+
+              return (
+                <View key={business.id} style={styles.businessCard}>
+                  <Text style={styles.businessName}>{business.name}</Text>
+                  <Text style={styles.businessMeta}>
+                    {business.category} · {business.city}
+                  </Text>
+                  <Text style={styles.businessMeta}>
+                    Queue: {queue?.status === 'open' ? 'Open' : 'Closed'}
+                  </Text>
+                  <Text style={styles.businessMeta}>
+                    Estimated wait: {formatMinutes(estimatedWait)}
+                  </Text>
+                  <Link
+                    href={
+                      {
+                        pathname: '/(customer)/businesses/[id]',
+                        params: { id: business.id },
+                      } as Href
+                    }
+                    style={styles.inlineLink}
+                  >
+                    View details
+                  </Link>
+                </View>
+              );
+            })
+          )}
         </View>
 
         <View style={styles.footerLinks}>
@@ -146,6 +158,12 @@ const styles = StyleSheet.create({
   },
   activeBannerText: {
     color: '#1e40af',
+  },
+  errorText: {
+    color: '#b91c1c',
+  },
+  loadingText: {
+    color: '#475569',
   },
   businessList: {
     gap: 10,
