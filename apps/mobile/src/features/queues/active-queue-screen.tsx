@@ -11,9 +11,14 @@ export function ActiveQueueScreen() {
         <Text style={{ marginTop: 6, color: '#4b5563' }}>
           Position and ETA will be shown here after join.
         </Text>
-        <Link href="/(customer)/queue/history" style={{ marginTop: 18, color: '#1d4ed8' }}>
-          View history
-        </Link>
+        <View style={{ marginTop: 18, gap: 10 }}>
+          <Link href="/(customer)/queue/history" style={{ color: '#1d4ed8' }}>
+            View history
+          </Link>
+          <Link href="/(customer)/home" style={{ color: '#1d4ed8' }}>
+            Leave queue (demo)
+          </Link>
+        </View>
       </View>
     </ScreenShell>
   );
