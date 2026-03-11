@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "QueueLess",
+    "slug": "queueless-mobile",
+    "scheme": "queueless",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}

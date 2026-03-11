@@ -1,0 +1,19 @@
+# dependencies
+node_modules
+
+# build
+dist
+.next
+.expo
+.turbo
+
+# env
+.env
+.env.*
+!.env.example
+
+# generated
+*.tsbuildinfo
+
+# os
+.DS_Store

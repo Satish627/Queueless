@@ -1,0 +1,23 @@
+{
+  "name": "queueless",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "bun@1.2.21",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "format": "prettier --check .",
+    "format:write": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.0",
+    "turbo": "^2.4.4",
+    "typescript": "^5.8.3"
+  }
+}
