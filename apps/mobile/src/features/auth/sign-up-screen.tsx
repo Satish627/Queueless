@@ -88,7 +88,9 @@ export function SignUpScreen() {
             style={[styles.input, fieldErrors.full_name ? styles.inputError : null]}
             value={fullName}
           />
-          {fieldErrors.full_name ? <Text style={styles.errorText}>{fieldErrors.full_name}</Text> : null}
+          {fieldErrors.full_name ? (
+            <Text style={styles.errorText}>{fieldErrors.full_name}</Text>
+          ) : null}
 
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -125,7 +127,9 @@ export function SignUpScreen() {
             style={[styles.input, fieldErrors.password ? styles.inputError : null]}
             value={password}
           />
-          {fieldErrors.password ? <Text style={styles.errorText}>{fieldErrors.password}</Text> : null}
+          {fieldErrors.password ? (
+            <Text style={styles.errorText}>{fieldErrors.password}</Text>
+          ) : null}
 
           {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
 
@@ -134,7 +138,9 @@ export function SignUpScreen() {
             onPress={handleSubmit}
             style={[styles.button, !canSubmit || isSubmitting ? styles.buttonDisabled : null]}
           >
-            <Text style={styles.buttonText}>{isSubmitting ? 'Creating account...' : 'Create account'}</Text>
+            <Text style={styles.buttonText}>
+              {isSubmitting ? 'Creating account...' : 'Create account'}
+            </Text>
           </Pressable>
         </View>
 

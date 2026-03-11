@@ -10,12 +10,7 @@
       "typedRoutes": true,
       "tsconfigPaths": true
     },
-    "plugins": [
-      "expo-router",
-      "expo-asset"
-    ],
-    "assetBundlePatterns": [
-      "**/*"
-    ]
+    "plugins": ["expo-router", "expo-asset"],
+    "assetBundlePatterns": ["**/*"]
   }
 }

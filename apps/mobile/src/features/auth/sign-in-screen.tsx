@@ -13,7 +13,10 @@ export function SignInScreen() {
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
-  const canSubmit = useMemo(() => email.trim().length > 0 && password.length > 0, [email, password]);
+  const canSubmit = useMemo(
+    () => email.trim().length > 0 && password.length > 0,
+    [email, password],
+  );
 
   const handleSubmit = () => {
     setFormError(null);
@@ -78,7 +81,9 @@ export function SignInScreen() {
             style={[styles.input, fieldErrors.password ? styles.inputError : null]}
             value={password}
           />
-          {fieldErrors.password ? <Text style={styles.errorText}>{fieldErrors.password}</Text> : null}
+          {fieldErrors.password ? (
+            <Text style={styles.errorText}>{fieldErrors.password}</Text>
+          ) : null}
 
           {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
 
