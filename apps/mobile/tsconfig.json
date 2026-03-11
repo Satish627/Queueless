@@ -11,11 +11,5 @@
       "@queueless/api": ["../../packages/api/src/index.ts"]
     }
   },
-  "include": [
-    "app",
-    "src",
-    "index.ts",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "include": ["app", "src", "index.ts", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }

@@ -22,7 +22,11 @@ export const getBusinessById = async (
   client: QueueLessSupabaseClient,
   businessId: string,
 ): Promise<Business | null> => {
-  const { data, error } = await client.from('businesses').select('*').eq('id', businessId).maybeSingle();
+  const { data, error } = await client
+    .from('businesses')
+    .select('*')
+    .eq('id', businessId)
+    .maybeSingle();
 
   if (error) {
     throw error;

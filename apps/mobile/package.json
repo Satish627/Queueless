@@ -14,6 +14,7 @@
     "@queueless/types": "workspace:*",
     "@queueless/validation": "workspace:*",
     "expo": "^52.0.0",
+    "expo-asset": "~11.0.5",
     "expo-router": "^4.0.0",
     "expo-status-bar": "^2.0.0",
     "react": "^19.0.0",

@@ -12,7 +12,9 @@ export function PageShell({ title, description, children }: PageShellProps) {
         <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
         {description ? <p className="text-sm text-slate-600">{description}</p> : null}
       </header>
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">{children}</section>
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        {children}
+      </section>
     </main>
   );
 }

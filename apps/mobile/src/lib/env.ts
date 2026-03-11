@@ -8,5 +8,8 @@ const required = (value: string | undefined, key: string): string => {
 
 export const env = {
   supabaseUrl: required(process.env.EXPO_PUBLIC_SUPABASE_URL, 'EXPO_PUBLIC_SUPABASE_URL'),
-  supabaseAnonKey: required(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, 'EXPO_PUBLIC_SUPABASE_ANON_KEY'),
+  supabaseAnonKey: required(
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+  ),
 };

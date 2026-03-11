@@ -10,7 +10,10 @@ export function HomeScreen() {
       <Text style={{ marginTop: 6, color: '#4b5563' }}>
         Browse active businesses and join their open queue.
       </Text>
-      <Link href="/(customer)/businesses/placeholder-business" style={{ marginTop: 18, color: '#1d4ed8' }}>
+      <Link
+        href="/(customer)/businesses/placeholder-business"
+        style={{ marginTop: 18, color: '#1d4ed8' }}
+      >
         Open business page
       </Link>
     </ScreenShell>

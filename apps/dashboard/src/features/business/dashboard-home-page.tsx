@@ -11,7 +11,10 @@ export function DashboardHomePage() {
           <Link className="font-medium text-brand-700 hover:text-brand-500" href="/dashboard/queue">
             Open queue management
           </Link>
-          <Link className="font-medium text-brand-700 hover:text-brand-500" href="/dashboard/settings">
+          <Link
+            className="font-medium text-brand-700 hover:text-brand-500"
+            href="/dashboard/settings"
+          >
             Business settings
           </Link>
         </div>

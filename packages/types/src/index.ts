@@ -107,7 +107,9 @@ export interface Database {
       queue_entries: {
         Row: QueueEntry;
         Insert: Omit<QueueEntry, 'id' | 'joined_at'> & { id?: string; joined_at?: string };
-        Update: Partial<Omit<QueueEntry, 'id' | 'queue_id' | 'customer_id' | 'source' | 'joined_at'>>;
+        Update: Partial<
+          Omit<QueueEntry, 'id' | 'queue_id' | 'customer_id' | 'source' | 'joined_at'>
+        >;
         Relationships: [];
       };
     };
